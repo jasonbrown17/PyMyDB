@@ -50,5 +50,13 @@ def main():
             continue
         call('/usr/bin/mysqldump -u%s -p%s -h%s %s > backup/%s-%s.sql' % (secret['username'], secret['password'], secret['hostname'], j, j, logtime), shell=True)
     
+def upload():
+
+    s3 = boto3.client('s3')
+
+    with open('', 'rb') as data:
+        s3.upload_fileobj(data, '', '')
+    
 if __name__ == '__main__':
     main()
+    upload()
