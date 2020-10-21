@@ -5,7 +5,7 @@ __author__ = 'Jason Brown'
 __email__  = 'jason@jasonbrown.us'
 __date__   = '20201019'
 
-import MySQLdb, boto3, json
+import MySQLdb, boto3, json, tarfile
 from subprocess import call
 from time import strftime
 
@@ -41,6 +41,8 @@ def main():
     for i in row:
         database.append('%s' % (i))
     cursor.close()
+
+    tarball = tarfile.open('', mode='w')
    
     for j in database:
         '''Ignore databases we do not care about and dump the remaining
@@ -49,14 +51,14 @@ def main():
         if j == "information_schema" or j == "performance_schema" or j == "mysql":
             continue
         call('/usr/bin/mysqldump -u%s -p%s -h%s %s > backup/%s-%s.sql' % (secret['username'], secret['password'], secret['hostname'], j, j, logtime), shell=True)
+        tarball.add(j)
     
-def upload():
+    tarball.close()
+    
+    s3 = boto3.resource('s3')
+    bucket = ''
 
-    s3 = boto3.client('s3')
-
-    with open('', 'rb') as data:
-        s3.upload_fileobj(data, '', '')
+    s3.Bucket(bucket).upload_file('', '')
     
 if __name__ == '__main__':
     main()
-    upload()
