@@ -3,7 +3,7 @@
 
 __author__ = 'Jason Brown'
 __email__  = 'jason@jasonbrown.us'
-__date__   = '20201019'
+__date__   = '20201021'
 
 import MySQLdb, boto3, json, tarfile
 from subprocess import call
@@ -13,9 +13,10 @@ def main():
     logtime = strftime("%Y%m%d")
     database = []
 
-    '''Connection to AWS Secrets Manager'''
+    '''Set variables for AWS Secrets Manager and S3'''
     secret_name = ''
     region_name = ''
+    bucket = ''
 
     client = boto3.client(
         service_name='secretsmanager',
@@ -34,7 +35,7 @@ def main():
     except:
         print("Cannot connect to database")
         return 0
-    
+
     '''Iterate through all the databases in the MySQL server'''
     cursor.execute("SHOW DATABASES;")
     row = cursor.fetchall()
@@ -42,23 +43,23 @@ def main():
         database.append('%s' % (i))
     cursor.close()
 
-    tarball = tarfile.open('', mode='w')
-   
+    sqltar = 'sqlbackups-' + logtime + '.tar'
+
+    tarball = tarfile.open(sqltar, mode='w')
+
     for j in database:
         '''Ignore databases we do not care about and dump the remaining
            Place SQL backups in a backup directory
         '''
         if j == "information_schema" or j == "performance_schema" or j == "mysql":
             continue
-        call('/usr/bin/mysqldump -u%s -p%s -h%s %s > backup/%s-%s.sql' % (secret['username'], secret['password'], secret['hostname'], j, j, logtime), shell=True)
-        tarball.add(j)
-    
+        call('/usr/bin/mysqldump -u%s -p%s -h%s %s > %s.sql' % (secret['username'], secret['password'], secret['hostname'], j, j), shell=True)
+        tarball.add(j + '.sql')
     tarball.close()
-    
-    s3 = boto3.resource('s3')
-    bucket = ''
 
-    s3.Bucket(bucket).upload_file('', '')
-    
+    '''Upload tarball to AWS S3'''
+    s3 = boto3.resource('s3')
+    s3.Bucket(bucket).upload_file(sqltar, sqltar)
+
 if __name__ == '__main__':
     main()
